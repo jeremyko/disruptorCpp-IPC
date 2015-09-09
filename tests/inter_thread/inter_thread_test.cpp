@@ -67,11 +67,6 @@ void ThreadWorkWrite(string tid, int nMyId)
     {AtomicPrint atomicPrint(szMsg);}
 #endif
 
-    //wake-up all consumer
-    std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
-    gSharedMemRingBuffer.SignalAll(); //
-    std::this_thread::sleep_for(std::chrono::milliseconds(100)); 
-    gSharedMemRingBuffer.SignalAll(); //
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -156,9 +151,6 @@ void TestFunc()
             return; //error
         }
         vecConsumerIndexes.push_back(nIndexforCustomerUse);
-
-        //여기서 기동하면 작업중 소비자 추가되는 상황이 된다..
-        //consumerThreads.push_back (std::thread (ThreadWorkRead, "consumer", i, nIndexforCustomerUse ) );
     }
 
     //2. run
@@ -188,10 +180,10 @@ void TestFunc()
 ///////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[])
 {
-    int MAX_TEST = 100;
-    SUM_TILL_THIS = 100;
-    int MAX_RBUFFER_CAPACITY = 4096; 
-    MAX_PRODUCER_CNT = 10; 
+    int MAX_TEST = 10;
+    SUM_TILL_THIS = 10000;
+    int MAX_RBUFFER_CAPACITY = 4096*4; 
+    MAX_PRODUCER_CNT = 2; 
     MAX_CONSUMER_CNT = 10; 
     SUM_ALL =  ( ( SUM_TILL_THIS * ( SUM_TILL_THIS + 1 ) ) /2 ) ; 
     SUM_ALL *= MAX_PRODUCER_CNT; 

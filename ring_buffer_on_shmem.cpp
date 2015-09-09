@@ -33,6 +33,9 @@ int LEN_ONE_BUFFER_DATA = sizeof(OneBufferData);
 
 std::mutex AtomicPrint::lock_mutex_ ;
 
+#if _DEBUG_
+char szMsg[1024];
+#endif
 ///////////////////////////////////////////////////////////////////////////////
 SharedMemRingBuffer::SharedMemRingBuffer(ENUM_WAIT_STRATEGY waitStrategyType)
 {
@@ -293,6 +296,7 @@ int64_t SharedMemRingBuffer::ClaimIndex(int nCallerId )
         if (wrapPoint >=  gatingSequence  ) 
         {
             std::this_thread::yield();
+            //std::this_thread::sleep_for(std::chrono::nanoseconds(1)); 
             continue;
         }
         else
@@ -350,7 +354,7 @@ int64_t SharedMemRingBuffer::WaitFor(int nUserId, int64_t nIndex)
         {AtomicPrint atomicPrint(szMsg);}
 #endif
         //wait strategy
-        return pWaitStrategy_ ->Wait(nIndex);
+        return pWaitStrategy_->Wait(nIndex);
     }
     else
     {
@@ -368,7 +372,6 @@ int64_t SharedMemRingBuffer::WaitFor(int nUserId, int64_t nIndex)
 ///////////////////////////////////////////////////////////////////////////////
 bool  SharedMemRingBuffer::CommitRead(int nUserId, int64_t index)
 {
-
     pRingBufferStatusOnSharedMem_->arrayOfConsumerIndexes[nUserId] = index ; //update
 
 #if _DEBUG_

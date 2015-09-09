@@ -150,6 +150,7 @@ class SleepingWaitStrategy:public WaitStrategyInterface
 
 
 ///////////////////////////////////////////////////////////////////////////////
+#include <sys/time.h>
 class BlockingWaitStrategy:public WaitStrategyInterface
 {
     public:
@@ -168,8 +169,21 @@ class BlockingWaitStrategy:public WaitStrategyInterface
 
                 if( nIndex > nCurrentCursor )
                 {
+                    struct timespec timeToWait;
+                    struct timeval now;
+                    gettimeofday(&now,NULL);
+                  
+                    timeToWait.tv_sec  = now.tv_sec;
+                    timeToWait.tv_nsec = now.tv_usec * 1000;
+                    timeToWait.tv_sec += 3;
+                    //timeToWait.tv_nsec += 100;
+
                     pthread_mutex_lock(&(pRingBufferStatusOnSharedMem_->mtxLock) );
-                    pthread_cond_wait(& (pRingBufferStatusOnSharedMem_->condVar), &(pRingBufferStatusOnSharedMem_->mtxLock) );
+
+                    pthread_cond_timedwait(& (pRingBufferStatusOnSharedMem_->condVar), 
+                                           &(pRingBufferStatusOnSharedMem_->mtxLock),
+                                           & timeToWait );
+
                     pthread_mutex_unlock(&(pRingBufferStatusOnSharedMem_->mtxLock));
                 }
                 else

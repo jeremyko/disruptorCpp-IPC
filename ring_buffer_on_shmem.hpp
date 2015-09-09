@@ -75,11 +75,6 @@ class SharedMemRingBuffer
         ENUM_WAIT_STRATEGY waitStrategyType_;
         WaitStrategyInterface* pWaitStrategy_ ;
         RingBuffer< OneBufferData* > ringBuffer_ ; 
-        //SharedMutex sharedMutex_;
-        //SharedCondVar sharedCondVar_;
-//#if _DEBUG_
-        char szMsg[1024];
-//#endif
     
         //no copy allowed
         SharedMemRingBuffer(SharedMemRingBuffer&) = delete;   

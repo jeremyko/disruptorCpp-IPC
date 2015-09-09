@@ -46,7 +46,7 @@ void ThreadWorkRead(string tid, int nMyId, int64_t nIndexforCustomerUse)
     int64_t nTotalFetched = 0; 
     int64_t nMyIndex = nIndexforCustomerUse ; 
 
-    for(int i=0; i < SUM_TILL_THIS  ; i++)
+    for(int i=0; i < SUM_TILL_THIS   ; i++)
     {
         if( nTotalFetched >= SUM_TILL_THIS ) 
         {
@@ -104,7 +104,7 @@ void ThreadWorkRead(string tid, int nMyId, int64_t nIndexforCustomerUse)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void TestFunc()
+void TestFunc(int nCustomerId)
 {
     std::vector<std::thread> consumerThreads ;
 
@@ -112,14 +112,14 @@ void TestFunc()
     //1. register
     std::vector<int64_t> vecConsumerIndexes ;
     int64_t nIndexforCustomerUse = -1;
-    if(!gSharedMemRingBuffer.RegisterConsumer(0, &nIndexforCustomerUse ) )
+    if(!gSharedMemRingBuffer.RegisterConsumer(nCustomerId, &nIndexforCustomerUse ) )
     {
         return; //error
     }
     vecConsumerIndexes.push_back(nIndexforCustomerUse);
 
     //2. run
-    consumerThreads.push_back (std::thread (ThreadWorkRead, "consumer", 0, vecConsumerIndexes[0] ) );
+    consumerThreads.push_back (std::thread (ThreadWorkRead, "consumer", nCustomerId, vecConsumerIndexes[0] ) );
 
     consumerThreads[0].join();
 }
@@ -128,6 +128,15 @@ void TestFunc()
 ///////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[])
 {
+    if(argc != 2)
+    {
+        std::cout << "usage: "<< argv[0]<<" customer_index"  << '\n';
+        std::cout << "ex: "<< argv[0]<<" 0"  << '\n';
+        std::cout << "ex: "<< argv[0]<<" 1"  << '\n';
+        return 1;
+    }
+
+    int nCustomerId = atoi(argv[1]);
     int MAX_TEST = 1;
     SUM_TILL_THIS = 10000;
     int MAX_RBUFFER_CAPACITY = 4096; 
@@ -145,7 +154,7 @@ int main(int argc, char* argv[])
 
     for ( gTestIndex=0; gTestIndex < MAX_TEST; gTestIndex++)
     {
-        TestFunc();
+        TestFunc(nCustomerId);
     }
 
     long long nElapsedMicro= elapsed.SetEndTime(MICRO_SEC_RESOLUTION);
