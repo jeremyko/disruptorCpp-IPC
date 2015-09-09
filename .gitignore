@@ -1,0 +1,8 @@
+tags
+*.o
+*.swp
+producer
+consumer
+inter_thread_test
+
+
