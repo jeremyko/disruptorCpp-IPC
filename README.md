@@ -14,5 +14,7 @@
     cd tests/inter_process 
     make -f make-producer.mk 
     make -f make-consumer.mk
-    ./consumer
+    //run 2 consumer, then 1 producer
+    ./consumer 0
+    ./consumer 1
     ./producer

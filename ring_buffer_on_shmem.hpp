@@ -35,7 +35,7 @@
 #include "common_def.hpp"
 #include "ring_buffer.hpp"
 #include "shared_mem_manager.hpp" 
-#include "wait_strategy_interface.hpp"
+#include "wait_strategy.hpp"
 
 using namespace std;
 

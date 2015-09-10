@@ -175,7 +175,7 @@ class BlockingWaitStrategy:public WaitStrategyInterface
                   
                     timeToWait.tv_sec  = now.tv_sec;
                     timeToWait.tv_nsec = now.tv_usec * 1000;
-                    timeToWait.tv_sec += 3;
+                    timeToWait.tv_sec += 1;
                     //timeToWait.tv_nsec += 100;
 
                     pthread_mutex_lock(&(pRingBufferStatusOnSharedMem_->mtxLock) );
