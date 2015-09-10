@@ -37,15 +37,15 @@ int SUM_TILL_THIS ;
 SharedMemRingBuffer gSharedMemRingBuffer (BLOCKING_WAIT); 
 
 ///////////////////////////////////////////////////////////////////////////////
-void ThreadWorkWrite(string tid, int nMyId) 
+void TestFunc()
 {
     int64_t nMyIndex = -1;
 
     for(int i=1; i <= SUM_TILL_THIS  ; i++) 
     {
         OneBufferData my_data;
-        nMyIndex = gSharedMemRingBuffer.ClaimIndex(nMyId);
-        my_data.producerId = nMyId;
+        nMyIndex = gSharedMemRingBuffer.ClaimIndex(0);
+        my_data.producerId = 0;
         my_data.nData = i ;
 
 #ifdef _DEBUG_WRITE_
@@ -57,19 +57,8 @@ void ThreadWorkWrite(string tid, int nMyId)
 #endif
 
         gSharedMemRingBuffer.SetData( nMyIndex, &my_data );
-        gSharedMemRingBuffer.Commit(nMyId, nMyIndex);
+        gSharedMemRingBuffer.Commit(0, nMyIndex);
     }
-}
-
-///////////////////////////////////////////////////////////////////////////////
-void TestFunc()
-{
-    std::vector<std::thread> producerThreads ;
-
-    //producer run
-    producerThreads.push_back (std::thread (ThreadWorkWrite, "procucer", 0 ) );
-
-    producerThreads[0].join();
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -90,11 +79,12 @@ int main(int argc, char* argv[])
     for ( gTestIndex=0; gTestIndex < MAX_TEST; gTestIndex++)
     {
         TestFunc();
+
+        long long nElapsedMicro= elapsed.SetEndTime(MICRO_SEC_RESOLUTION);
+        std::cout << "**** procucer test " << gTestIndex << " / count:"<< SUM_TILL_THIS << " -> elapsed : "<< nElapsedMicro << "(micro sec) /"
+            << (long long) (10000L*1000000L)/nElapsedMicro <<" TPS\n";
     }
 
-    long long nElapsedMicro= elapsed.SetEndTime(MICRO_SEC_RESOLUTION);
-    std::cout << "**** procucer test " << gTestIndex << " / count:"<< SUM_TILL_THIS << " -> elapsed : "<< nElapsedMicro << "(micro sec) /"
-        << (long long) (10000L*1000000L)/nElapsedMicro <<" TPS\n";
 
     return 0;
 }

@@ -34,17 +34,30 @@ int gTestIndex;
 int SUM_TILL_THIS ;
 int64_t SUM_ALL ; 
 
+//Wait Strategy 
 //SharedMemRingBuffer gSharedMemRingBuffer (YIELDING_WAIT); 
 //SharedMemRingBuffer gSharedMemRingBuffer (SLEEPING_WAIT); 
 SharedMemRingBuffer gSharedMemRingBuffer (BLOCKING_WAIT); 
 
+ElapsedTime gElapsed;
+        
+
 ///////////////////////////////////////////////////////////////////////////////
-void ThreadWorkRead(string tid, int nMyId, int64_t nIndexforCustomerUse) 
+void TestFunc(int nCustomerId)
 {
+    //1. register
+    int64_t nIndexforCustomerUse = -1;
+    if(!gSharedMemRingBuffer.RegisterConsumer(nCustomerId, &nIndexforCustomerUse ) )
+    {
+        return; //error
+    }
+
+    //2. run
     char szMsg[1024];
     int64_t nSum =  0;
     int64_t nTotalFetched = 0; 
     int64_t nMyIndex = nIndexforCustomerUse ; 
+    bool bFirst=true;
 
     for(int i=0; i < SUM_TILL_THIS   ; i++)
     {
@@ -53,12 +66,18 @@ void ThreadWorkRead(string tid, int nMyId, int64_t nIndexforCustomerUse)
             break;
         }
 
-        int64_t nReturnedIndex = gSharedMemRingBuffer.WaitFor(nMyId, nMyIndex);
+        int64_t nReturnedIndex = gSharedMemRingBuffer.WaitFor(nCustomerId, nMyIndex);
+
+        if(bFirst)
+        {
+            bFirst=false;
+            gElapsed.SetStartTime();
+        }
 
 #ifdef _DEBUG_READ
         snprintf(szMsg, sizeof(szMsg), 
                 "[id:%d]    \t\t\t\t\t\t\t\t\t\t\t\t[%s-%d] WaitFor nMyIndex[%" PRId64 "] nReturnedIndex[%" PRId64 "]", 
-                nMyId, __func__, __LINE__, nMyIndex, nReturnedIndex );
+                nCustomerId, __func__, __LINE__, nMyIndex, nReturnedIndex );
         {AtomicPrint atomicPrint(szMsg);}
 #endif
 
@@ -72,23 +91,28 @@ void ThreadWorkRead(string tid, int nMyId, int64_t nIndexforCustomerUse)
 #ifdef _DEBUG_READ
             snprintf(szMsg, sizeof(szMsg), 
                     "[id:%d]   \t\t\t\t\t\t\t\t\t\t\t\t[%s-%d]  nMyIndex[%" PRId64 ", translated:%" PRId64 "] data [%" PRId64 "] ^^", 
-                    nMyId, __func__, __LINE__, j, gSharedMemRingBuffer.GetTranslatedIndex(j), pData->nData );
+                    nCustomerId, __func__, __LINE__, j, gSharedMemRingBuffer.GetTranslatedIndex(j), pData->nData );
             {AtomicPrint atomicPrint(szMsg);}
 #endif
 
-            gSharedMemRingBuffer.CommitRead(nMyId, j );
+            gSharedMemRingBuffer.CommitRead(nCustomerId, j );
             nTotalFetched++;
 
         } //for
 
         nMyIndex = nReturnedIndex + 1; 
-    }
+    } //for
+
+    long long nElapsedMicro= gElapsed.SetEndTime(MICRO_SEC_RESOLUTION);
+    snprintf(szMsg, sizeof(szMsg), "**** consumer test %d count %d -> elapsed :%lld (micro sec) TPS %lld", 
+        gTestIndex , SUM_TILL_THIS , nElapsedMicro, (long long) (10000L*1000000L)/nElapsedMicro );
+    {AtomicPrint atomicPrint(szMsg);}
 
     if(nSum != SUM_ALL)
     {
         snprintf(szMsg, sizeof(szMsg), 
             "\t\t\t\t\t\t\t\t\t\t\t\t********* SUM ERROR : ThreadWorkRead [id:%d] Exiting, Sum =%" PRId64 " / gTestIndex[%d]", 
-            nMyId, nSum, gTestIndex);
+            nCustomerId, nSum, gTestIndex);
         {AtomicPrint atomicPrint(szMsg);}
 
         exit(0);
@@ -97,31 +121,10 @@ void ThreadWorkRead(string tid, int nMyId, int64_t nIndexforCustomerUse)
     {
 #ifdef _DEBUG_RSLT_
         snprintf(szMsg, sizeof(szMsg), 
-            "\t\t\t\t\t\t\t\t\t\t\t\t********* SUM OK : ThreadWorkRead [id:%d] Sum =%" PRId64 " / gTestIndex[%d]", nMyId, nSum,gTestIndex );
+            "\t\t\t\t\t\t\t\t\t\t\t\t********* SUM OK : ThreadWorkRead [id:%d] Sum =%" PRId64 " / gTestIndex[%d]", nCustomerId, nSum,gTestIndex );
         {AtomicPrint atomicPrint(szMsg);}
 #endif
     }
-}
-
-///////////////////////////////////////////////////////////////////////////////
-void TestFunc(int nCustomerId)
-{
-    std::vector<std::thread> consumerThreads ;
-
-    //Consumer
-    //1. register
-    std::vector<int64_t> vecConsumerIndexes ;
-    int64_t nIndexforCustomerUse = -1;
-    if(!gSharedMemRingBuffer.RegisterConsumer(nCustomerId, &nIndexforCustomerUse ) )
-    {
-        return; //error
-    }
-    vecConsumerIndexes.push_back(nIndexforCustomerUse);
-
-    //2. run
-    consumerThreads.push_back (std::thread (ThreadWorkRead, "consumer", nCustomerId, vecConsumerIndexes[0] ) );
-
-    consumerThreads[0].join();
 }
 
 
@@ -150,16 +153,12 @@ int main(int argc, char* argv[])
         return 1; 
     }
 
-    ElapsedTime elapsed;
 
     for ( gTestIndex=0; gTestIndex < MAX_TEST; gTestIndex++)
     {
         TestFunc(nCustomerId);
     }
 
-    long long nElapsedMicro= elapsed.SetEndTime(MICRO_SEC_RESOLUTION);
-    std::cout << "**** consumer test " << gTestIndex << " / count:"<< SUM_TILL_THIS << " -> elapsed : "<< nElapsedMicro << "(micro sec) /"
-        << (long long) (10000L*1000000L)/nElapsedMicro <<" TPS\n";
 
     return 0;
 }
