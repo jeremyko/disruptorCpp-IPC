@@ -81,8 +81,9 @@ int main(int argc, char* argv[])
         TestFunc();
 
         long long nElapsedMicro= elapsed.SetEndTime(MICRO_SEC_RESOLUTION);
-        std::cout << "**** procucer test " << gTestIndex << " / count:"<< SUM_TILL_THIS << " -> elapsed : "<< nElapsedMicro << "(micro sec) /"
-            << (long long) (10000L*1000000L)/nElapsedMicro <<" TPS\n";
+        std::cout << "**** procucer test " << gTestIndex << " / count:"
+                  << SUM_TILL_THIS << " -> elapsed : "<< nElapsedMicro << "(micro sec) /"
+                  << (long long) (10000L*1000000L)/nElapsedMicro <<" TPS\n";
     }
 
 

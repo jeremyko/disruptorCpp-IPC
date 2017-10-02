@@ -91,7 +91,8 @@ void TestFunc(int nCustomerId)
 #ifdef _DEBUG_READ
             snprintf(szMsg, sizeof(szMsg), 
                     "[id:%d]   \t\t\t\t\t\t\t\t\t\t\t\t[%s-%d]  nMyIndex[%" PRId64 ", translated:%" PRId64 "] data [%" PRId64 "] ^^", 
-                    nCustomerId, __func__, __LINE__, j, gSharedMemRingBuffer.GetTranslatedIndex(j), pData->nData );
+                    nCustomerId, __func__, __LINE__, j, 
+                    gSharedMemRingBuffer.GetTranslatedIndex(j), pData->nData );
             {AtomicPrint atomicPrint(szMsg);}
 #endif
 
@@ -105,7 +106,8 @@ void TestFunc(int nCustomerId)
 
     long long nElapsedMicro= gElapsed.SetEndTime(MICRO_SEC_RESOLUTION);
     snprintf(szMsg, sizeof(szMsg), "**** consumer test %d count %d -> elapsed :%lld (micro sec) TPS %lld", 
-        gTestIndex , SUM_TILL_THIS , nElapsedMicro, (long long) (10000L*1000000L)/nElapsedMicro );
+        gTestIndex , SUM_TILL_THIS , nElapsedMicro, 
+        (long long) (10000L*1000000L)/nElapsedMicro );
     {AtomicPrint atomicPrint(szMsg);}
 
     if(nSum != SUM_ALL)
@@ -121,7 +123,8 @@ void TestFunc(int nCustomerId)
     {
 #ifdef _DEBUG_RSLT_
         snprintf(szMsg, sizeof(szMsg), 
-            "\t\t\t\t\t\t\t\t\t\t\t\t********* SUM OK : ThreadWorkRead [id:%d] Sum =%" PRId64 " / gTestIndex[%d]", nCustomerId, nSum,gTestIndex );
+            "\t\t\t\t\t\t\t\t\t\t\t\t********* SUM OK : ThreadWorkRead [id:%d] Sum =%" PRId64 " / gTestIndex[%d]", 
+            nCustomerId, nSum,gTestIndex );
         {AtomicPrint atomicPrint(szMsg);}
 #endif
     }

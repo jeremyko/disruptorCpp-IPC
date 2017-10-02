@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <sys/ipc.h> 
 #include <sys/shm.h> 
+#define CACHE_LINE_SIZE 64 
 
 typedef struct _OneBufferData_
 {
@@ -27,9 +28,9 @@ typedef struct _RingBufferStatusOnSharedMem_
     int  nTotalMemSize ;
     std::atomic<int> registered_producer_count ;
     std::atomic<int> registered_consumer_count;
-    std::atomic<int64_t> cursor  __attribute__ ((aligned (64))) ;
-    std::atomic<int64_t> next    __attribute__ ((aligned (64))) ;
-    int64_t arrayOfConsumerIndexes [MAX_CONSUMER] __attribute__ ((aligned (64)));
+    std::atomic<int64_t> cursor  alignas(CACHE_LINE_SIZE);  
+    std::atomic<int64_t> next    alignas(CACHE_LINE_SIZE); 
+    int64_t arrayOfConsumerIndexes [MAX_CONSUMER] __attribute__ ((aligned (CACHE_LINE_SIZE)));
 
     pthread_cond_t   condVar;
     pthread_mutex_t  mtxLock;

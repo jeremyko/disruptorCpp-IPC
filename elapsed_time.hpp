@@ -41,50 +41,30 @@ class ElapsedTime
     public:
         ElapsedTime()
         {
-            time_resolution_ = NO_RESOLUTION;
-            SetStartTime();
-        }
-
-        ElapsedTime(std::string strDescription, ENUM_TIME_RESOLUTION time_resolution)
-        {
-            strDescription_ = strDescription;
-            time_resolution_ = time_resolution;
             SetStartTime();
         }
 
         ~ElapsedTime()
         {
-            SetEndTime(time_resolution_);
         }
 
         void SetStartTime()
         {
-            startT_ = std::chrono::steady_clock::now(); //c++11
-            //startT_ = std::chrono::monotonic_clock::now();
+            start_time_ = std::chrono::steady_clock::now(); 
         }
 
         long long SetEndTime( ENUM_TIME_RESOLUTION resolution)
         {
-            endT_ = std::chrono::steady_clock::now(); //c++11
-            //endT_ = std::chrono::monotonic_clock::now();
+            end_time_ = std::chrono::steady_clock::now(); 
 
             if(resolution == MILLI_SEC_RESOLUTION)
             {
-                millisecs_t duration(std::chrono::duration_cast<millisecs_t>(endT_ - startT_));
-
-                if(time_resolution_ != NO_RESOLUTION)
-                {
-                    std::cout << strDescription_ <<" elapsed : " << duration.count() << "(milli seconds)\n";
-                }
+                millisecs_t duration(std::chrono::duration_cast<millisecs_t>(end_time_ - start_time_));
                 return duration.count();
             }
             else if (resolution == MICRO_SEC_RESOLUTION)
             {
-                microsecs_t duration(std::chrono::duration_cast<microsecs_t>(endT_ - startT_));
-                if(time_resolution_ != NO_RESOLUTION)
-                {
-                    std::cout <<strDescription_ << " elapsed : " << duration.count() << "(micro seconds)\n";
-                }
+                microsecs_t duration(std::chrono::duration_cast<microsecs_t>(end_time_ - start_time_));
                 return duration.count();
             }
 
@@ -92,13 +72,8 @@ class ElapsedTime
         }
 
     protected:
-        //std::chrono::monotonic_clock::time_point startT_; //c++0x
-        //std::chrono::monotonic_clock::time_point endT_;   //c++0x
-        std::chrono::steady_clock::time_point startT_; //c++11
-        std::chrono::steady_clock::time_point endT_;   //c++11
-
-        ENUM_TIME_RESOLUTION time_resolution_;
-        std::string               strDescription_;
+        std::chrono::steady_clock::time_point start_time_; 
+        std::chrono::steady_clock::time_point end_time_  ;   
 };
 
 #endif

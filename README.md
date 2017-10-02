@@ -19,3 +19,4 @@
     ./consumer 0
     ./consumer 1
     ./producer
+    //make sure reset shared memory running 'ipcrm -M your_shmkey' if you have changed buffer size or number of producers/consumers.
