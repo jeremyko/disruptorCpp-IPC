@@ -31,182 +31,143 @@
 #include "../../atomic_print.hpp"
 #include "../../elapsed_time.hpp"
 
-using namespace std;
+size_t g_test_index     =0;
+size_t MAX_PRODUCER_CNT =0; 
+size_t MAX_CONSUMER_CNT =0;
+size_t SUM_TILL_THIS    =0;
+size_t SUM_ALL          =0; 
 
-int gTestIndex;
-int MAX_PRODUCER_CNT ; 
-int MAX_CONSUMER_CNT;
-int SUM_TILL_THIS ;
-int64_t SUM_ALL ; 
-
-//SharedMemRingBuffer gSharedMemRingBuffer (YIELDING_WAIT); 
-//SharedMemRingBuffer gSharedMemRingBuffer (SLEEPING_WAIT); 
-SharedMemRingBuffer gSharedMemRingBuffer (BLOCKING_WAIT); 
+//SharedMemRingBuffer g_shared_mem_ring_buffer (YIELDING_WAIT); 
+//SharedMemRingBuffer g_shared_mem_ring_buffer (SLEEPING_WAIT); 
+SharedMemRingBuffer g_shared_mem_ring_buffer (BLOCKING_WAIT); 
 
 ///////////////////////////////////////////////////////////////////////////////
-void ThreadWorkWrite(string tid, int nMyId) 
+void ThreadWorkWrite(std::string tid, int my_id) 
 {
-    int64_t nMyIndex = -1;
-
-    for(int i=1; i <= SUM_TILL_THIS  ; i++) 
-    {
+    int64_t my_index = -1;
+    for(size_t i=1; i <= SUM_TILL_THIS  ; i++) {
         OneBufferData my_data;
-        nMyIndex = gSharedMemRingBuffer.ClaimIndex(nMyId);
-        my_data.producerId = nMyId;
-        my_data.nData = i ;
-
-        gSharedMemRingBuffer.SetData( nMyIndex, &my_data );
-
-        gSharedMemRingBuffer.Commit(nMyId, nMyIndex); 
+        my_index = g_shared_mem_ring_buffer.ClaimIndex(my_id);
+        my_data.producer_id = my_id;
+        my_data.data = i ;
+        g_shared_mem_ring_buffer.SetData( my_index, &my_data );
+        g_shared_mem_ring_buffer.Commit(my_id, my_index); 
     }
-
-#ifdef _DEBUG_WRITE
-    char szMsg[1024];
-    snprintf(szMsg, sizeof(szMsg), 
-            "[id:%d]    [%s-%d] Write Done", nMyId, __func__, __LINE__ );
-    {AtomicPrint atomicPrint(szMsg);}
+#ifdef DEBUG_WRITE
+    char msg_buffer[1024];
+    snprintf(msg_buffer, sizeof(msg_buffer), 
+            "[id:%d]    [%s-%d] Write Done", my_id, __func__, __LINE__ );
+    {AtomicPrint atomicPrint(msg_buffer);}
 #endif
-
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void ThreadWorkRead(string tid, int nMyId, int64_t nIndexforCustomerUse) 
+void ThreadWorkRead(std::string tid, int my_id, int64_t index_for_customer_use) 
 {
-    char szMsg[1024];
-    int64_t nSum =  0;
-    int64_t nTotalFetched = 0; 
-    int64_t nMyIndex = nIndexforCustomerUse ; 
+    char msg_buffer[1024];
+    size_t  sum =  0;
+    size_t  total_fetched = 0; 
+    int64_t my_index = index_for_customer_use ; 
 
-    for(int i=0; i < MAX_PRODUCER_CNT * SUM_TILL_THIS  ; i++)
-    {
-        if( nTotalFetched >= (MAX_PRODUCER_CNT*  SUM_TILL_THIS) ) 
-        {
+    for(size_t i=0; i < MAX_PRODUCER_CNT * SUM_TILL_THIS  ; i++) {
+        if( total_fetched >= (MAX_PRODUCER_CNT*  SUM_TILL_THIS) ) {
             break;
         }
-
-        int64_t nReturnedIndex = gSharedMemRingBuffer.WaitFor(nMyId, nMyIndex);
-
-#ifdef _DEBUG_READ
-        snprintf(szMsg, sizeof(szMsg), 
-                "[id:%d]    \t\t\t\t\t\t\t\t\t\t\t\t[%s-%d] WaitFor nMyIndex[%" PRId64 "] nReturnedIndex[%" PRId64 "]", 
-                nMyId, __func__, __LINE__, nMyIndex, nReturnedIndex );
-        {AtomicPrint atomicPrint(szMsg);}
+        int64_t nReturnedIndex = g_shared_mem_ring_buffer.WaitFor(my_id, my_index);
+#ifdef DEBUG_READ
+        snprintf(msg_buffer, sizeof(msg_buffer), 
+            "[id:%d]    \t\t\t\t\t\t\t\t\t\t\t\t[%s-%d] WaitFor my_index"
+            "[%" PRId64 "] nReturnedIndex[%" PRId64 "]", 
+            my_id, __func__, __LINE__, my_index, nReturnedIndex );
+        {AtomicPrint atomicPrint(msg_buffer);}
 #endif
-
-        for(int64_t j = nMyIndex; j <= nReturnedIndex; j++)
-        {
+        for(int64_t j = my_index; j <= nReturnedIndex; j++) {
             //batch job 
-            OneBufferData* pData =  gSharedMemRingBuffer.GetData(j);
-
-            nSum += pData->nData ;
-
-#ifdef _DEBUG_READ
-            snprintf(szMsg, sizeof(szMsg), 
-                    "[id:%d]   \t\t\t\t\t\t\t\t\t\t\t\t[%s-%d]  nMyIndex[%" PRId64 ", translated:%" PRId64 "] data [%" PRId64 "] ^^", 
-                    nMyId, __func__, __LINE__, j, gSharedMemRingBuffer.GetTranslatedIndex(j), pData->nData );
-            {AtomicPrint atomicPrint(szMsg);}
+            OneBufferData* pData =  g_shared_mem_ring_buffer.GetData(j);
+            sum += pData->data ;
+#ifdef DEBUG_READ
+            snprintf(msg_buffer, sizeof(msg_buffer), 
+                "[id:%d]   \t\t\t\t\t\t\t\t\t\t\t\t[%s-%d]  my_index"
+                "[%" PRId64 ", translated:%" PRId64 "] data [%" PRId64 "] ^^", 
+                my_id, __func__, __LINE__, j, g_shared_mem_ring_buffer.GetTranslatedIndex(j), pData->data );
+            {AtomicPrint atomicPrint(msg_buffer);}
 #endif
-
-            gSharedMemRingBuffer.CommitRead(nMyId, j );
-            nTotalFetched++;
-
+            g_shared_mem_ring_buffer.CommitRead(my_id, j );
+            total_fetched++;
         } //for
-
-        nMyIndex = nReturnedIndex + 1; 
+        my_index = nReturnedIndex + 1; 
     }
-
-    if(nSum != SUM_ALL)
-    {
-        snprintf(szMsg, sizeof(szMsg), 
-            "\t\t\t\t\t\t\t\t\t\t\t\t********* SUM ERROR : ThreadWorkRead [id:%d] Exiting, Sum =%" PRId64 " / gTestIndex[%d]", 
-            nMyId, nSum, gTestIndex);
-
-        {AtomicPrint atomicPrint(szMsg);}
+    if(sum != SUM_ALL) {
+        snprintf(msg_buffer, sizeof(msg_buffer), 
+            "\t\t\t\t\t\t\t\t\t\t\t\t********* SUM ERROR : ThreadWorkRead "
+            "[id:%d] Exiting, Sum =%lu / g_test_index[%lu]", 
+            my_id, sum, g_test_index);
+        {AtomicPrint atomicPrint(msg_buffer);}
         exit(0);
-    }
-    else
-    {
-#ifdef _DEBUG_RSLT_
-        snprintf(szMsg, sizeof(szMsg), 
-            "\t\t\t\t\t\t\t\t\t\t\t\t********* SUM OK : ThreadWorkRead [id:%d] Sum =%" PRId64 " / gTestIndex[%d]", nMyId, nSum,gTestIndex );
-        {AtomicPrint atomicPrint(szMsg);}
-#endif
+    } else {
+        snprintf(msg_buffer, sizeof(msg_buffer), 
+            "\t\t\t\t\t\t\t\t\t\t\t\t********* SUM OK : ThreadWorkRead "
+            "[id:%d] Sum =%lu / g_test_index[%lu]", my_id, sum,g_test_index );
+        {AtomicPrint atomicPrint(msg_buffer);}
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 void TestFunc()
 {
-    std::vector<std::thread> consumerThreads ;
-    std::vector<std::thread> producerThreads ;
-
+    std::vector<std::thread> consumer_threads ;
+    std::vector<std::thread> producer_threads ;
     //Consumer
     //1. register
-    std::vector<int64_t> vecConsumerIndexes ;
-    for(int i = 0; i < MAX_CONSUMER_CNT; i++)
-    {
-        int64_t nIndexforCustomerUse = -1;
-        if(!gSharedMemRingBuffer.RegisterConsumer(i, &nIndexforCustomerUse ) )
-        {
+    std::vector<int64_t> vec_consumer_indexes ;
+    for(size_t i = 0; i < MAX_CONSUMER_CNT; i++) {
+        int64_t index_for_customer_use = -1;
+        if(!g_shared_mem_ring_buffer.RegisterConsumer(i, &index_for_customer_use )) {
             return; //error
         }
-        vecConsumerIndexes.push_back(nIndexforCustomerUse);
+        DEBUG_LOG("index_for_customer_use = " <<index_for_customer_use );
+        vec_consumer_indexes.push_back(index_for_customer_use);
     }
-
     //2. run
-    for(int i = 0; i < MAX_CONSUMER_CNT; i++)
-    {
-        consumerThreads.push_back (std::thread (ThreadWorkRead, "consumer", i, vecConsumerIndexes[i] ) );
+    for(size_t i = 0; i < MAX_CONSUMER_CNT; i++) {
+        consumer_threads.push_back (std::thread (ThreadWorkRead, "consumer", i, vec_consumer_indexes[i] ) );
     }
-
     //producer run
-    for(int i = 0; i < MAX_PRODUCER_CNT; i++)
-    {
-        producerThreads.push_back (std::thread (ThreadWorkWrite, "procucer", i ) );
+    for(size_t i = 0; i < MAX_PRODUCER_CNT; i++) {
+        producer_threads.push_back (std::thread (ThreadWorkWrite, "procucer", i ) );
     }
-
-    for(int i = 0; i < MAX_PRODUCER_CNT; i++)
-    {
-        producerThreads[i].join();
+    for(size_t i = 0; i < MAX_PRODUCER_CNT; i++) {
+        producer_threads[i].join();
     }
-
-    for(int i = 0; i < MAX_CONSUMER_CNT; i++)
-    {
-        consumerThreads[i].join();
+    for(size_t i = 0; i < MAX_CONSUMER_CNT; i++) {
+        consumer_threads[i].join();
     }
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[])
 {
-    int MAX_TEST = 10;
-    SUM_TILL_THIS = 10000;
-    int MAX_RBUFFER_CAPACITY = 4096*4; 
-    MAX_PRODUCER_CNT = 2; 
+    size_t MAX_TEST = 1;
+    SUM_TILL_THIS = 10;
+    size_t MAX_RBUFFER_CAPACITY = 4096*4; 
+    MAX_PRODUCER_CNT = 1; 
     MAX_CONSUMER_CNT = 10; 
     SUM_ALL =  ( ( SUM_TILL_THIS * ( SUM_TILL_THIS + 1 ) ) /2 ) ; 
     SUM_ALL *= MAX_PRODUCER_CNT; 
-
     std::cout << "********* SUM_ALL : " << SUM_ALL << '\n';
 
-    if(! gSharedMemRingBuffer.InitRingBuffer(MAX_RBUFFER_CAPACITY) )
-    { 
+    if(! g_shared_mem_ring_buffer.InitRingBuffer(MAX_RBUFFER_CAPACITY) ) { 
         //Error!
         return 1; 
     }
-
     ElapsedTime elapsed;
-
-    for ( gTestIndex=0; gTestIndex < MAX_TEST; gTestIndex++)
-    {
+    for ( g_test_index=0; g_test_index < MAX_TEST; g_test_index++) {
         TestFunc();
     }
-
     long long nElapsedMicro= elapsed.SetEndTime(MICRO_SEC_RESOLUTION);
-    std::cout << "**** test " << gTestIndex << " / count:"<< SUM_TILL_THIS << " -> elapsed : "<< nElapsedMicro << "(micro sec) /"
+    std::cout << "**** test " << g_test_index << " / count:"<< SUM_TILL_THIS 
+        << " -> elapsed : "<< nElapsedMicro << "(micro sec) /"
         << (long long) (10000L*1000000L)/nElapsedMicro <<" TPS\n";
-
     return 0;
 }
 

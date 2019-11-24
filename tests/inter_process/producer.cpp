@@ -27,37 +27,31 @@
 #include "../../atomic_print.hpp"
 #include "../../elapsed_time.hpp"
 
-using namespace std;
+int g_test_index = 0 ;
+size_t SUM_TILL_THIS = 0;
 
-int gTestIndex;
-int SUM_TILL_THIS ;
-
-//SharedMemRingBuffer gSharedMemRingBuffer (YIELDING_WAIT); 
-//SharedMemRingBuffer gSharedMemRingBuffer (SLEEPING_WAIT); 
-SharedMemRingBuffer gSharedMemRingBuffer (BLOCKING_WAIT); 
+//SharedMemRingBuffer g_shared_mem_ring_buffer (YIELDING_WAIT); 
+//SharedMemRingBuffer g_shared_mem_ring_buffer (SLEEPING_WAIT); 
+SharedMemRingBuffer g_shared_mem_ring_buffer (BLOCKING_WAIT); 
 
 ///////////////////////////////////////////////////////////////////////////////
 void TestFunc()
 {
-    int64_t nMyIndex = -1;
-
-    for(int i=1; i <= SUM_TILL_THIS  ; i++) 
-    {
+    int64_t my_index = -1;
+    for(size_t i=1; i <= SUM_TILL_THIS  ; i++) {
         OneBufferData my_data;
-        nMyIndex = gSharedMemRingBuffer.ClaimIndex(0);
-        my_data.producerId = 0;
-        my_data.nData = i ;
-
-#ifdef _DEBUG_WRITE_
-        char szMsg[1024];
-        snprintf(szMsg, sizeof(szMsg), 
-                "[id:%d] [%s-%d] write data / nMyIndex[%" PRId64 "] data [%d]", 
-                nMyId, __func__, __LINE__, nMyIndex, i );
-        {AtomicPrint atomicPrint(szMsg);}
+        my_index = g_shared_mem_ring_buffer.ClaimIndex(0);
+        my_data.producer_id = 0;
+        my_data.data = i ;
+#ifdef DEBUG_WRITE_
+        char msg_buffer[1024];
+        snprintf(msg_buffer, sizeof(msg_buffer), 
+                "[id:%d] [%s-%d] write data / my_index[%" PRId64 "] data [%d]", 
+                0, __func__, __LINE__, my_index, i );
+        {AtomicPrint atomicPrint(msg_buffer);}
 #endif
-
-        gSharedMemRingBuffer.SetData( nMyIndex, &my_data );
-        gSharedMemRingBuffer.Commit(0, nMyIndex);
+        g_shared_mem_ring_buffer.SetData( my_index, &my_data );
+        g_shared_mem_ring_buffer.Commit(0, my_index);
     }
 }
 
@@ -67,26 +61,18 @@ int main(int argc, char* argv[])
     int MAX_TEST = 1;
     SUM_TILL_THIS = 10000;
     int MAX_RBUFFER_CAPACITY = 4096; 
-
-    if(! gSharedMemRingBuffer.InitRingBuffer(MAX_RBUFFER_CAPACITY) )
-    { 
+    if(! g_shared_mem_ring_buffer.InitRingBuffer(MAX_RBUFFER_CAPACITY) ) { 
         //Error!
         return 1; 
     }
-
     ElapsedTime elapsed;
-
-    for ( gTestIndex=0; gTestIndex < MAX_TEST; gTestIndex++)
-    {
+    for ( g_test_index=0; g_test_index < MAX_TEST; g_test_index++) {
         TestFunc();
-
         long long nElapsedMicro= elapsed.SetEndTime(MICRO_SEC_RESOLUTION);
-        std::cout << "**** procucer test " << gTestIndex << " / count:"
+        std::cout << "**** procucer test " << g_test_index << " / count:"
                   << SUM_TILL_THIS << " -> elapsed : "<< nElapsedMicro << "(micro sec) /"
                   << (long long) (10000L*1000000L)/nElapsedMicro <<" TPS\n";
     }
-
-
     return 0;
 }
 

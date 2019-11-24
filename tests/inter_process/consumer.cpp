@@ -28,141 +28,114 @@
 #include "../../atomic_print.hpp"
 #include "../../elapsed_time.hpp"
 
-using namespace std;
-
-int gTestIndex;
-int SUM_TILL_THIS ;
-int64_t SUM_ALL ; 
+size_t   g_test_index  = 0;
+size_t   SUM_TILL_THIS = 0;
+size_t   SUM_ALL       = 0; 
 
 //Wait Strategy 
-//SharedMemRingBuffer gSharedMemRingBuffer (YIELDING_WAIT); 
-//SharedMemRingBuffer gSharedMemRingBuffer (SLEEPING_WAIT); 
-SharedMemRingBuffer gSharedMemRingBuffer (BLOCKING_WAIT); 
+//SharedMemRingBuffer g_shared_mem_ring_buffer (YIELDING_WAIT); 
+//SharedMemRingBuffer g_shared_mem_ring_buffer (SLEEPING_WAIT); 
+SharedMemRingBuffer g_shared_mem_ring_buffer (BLOCKING_WAIT); 
 
-ElapsedTime gElapsed;
-        
+ElapsedTime g_elapsed;
 
 ///////////////////////////////////////////////////////////////////////////////
-void TestFunc(int nCustomerId)
+void TestFunc(int customer_id)
 {
     //1. register
-    int64_t nIndexforCustomerUse = -1;
-    if(!gSharedMemRingBuffer.RegisterConsumer(nCustomerId, &nIndexforCustomerUse ) )
-    {
+    int64_t index_for_customer_use = -1;
+    if(!g_shared_mem_ring_buffer.RegisterConsumer(customer_id, &index_for_customer_use )) {
         return; //error
     }
-
     //2. run
-    char szMsg[1024];
-    int64_t nSum =  0;
-    int64_t nTotalFetched = 0; 
-    int64_t nMyIndex = nIndexforCustomerUse ; 
-    bool bFirst=true;
+    size_t   sum =  0;
+    size_t   total_fetched = 0; 
+    int64_t  my_index = index_for_customer_use ; 
+    bool is_first=true;
+    char msg_buffer[1024];
 
-    for(int i=0; i < SUM_TILL_THIS   ; i++)
-    {
-        if( nTotalFetched >= SUM_TILL_THIS ) 
-        {
+    for(size_t i=0; i < SUM_TILL_THIS   ; i++) {
+        if( total_fetched >= SUM_TILL_THIS ) {
             break;
         }
-
-        int64_t nReturnedIndex = gSharedMemRingBuffer.WaitFor(nCustomerId, nMyIndex);
-
-        if(bFirst)
-        {
-            bFirst=false;
-            gElapsed.SetStartTime();
+        int64_t returned_index = g_shared_mem_ring_buffer.WaitFor(customer_id, my_index);
+        if(is_first) {
+            is_first=false;
+            g_elapsed.SetStartTime();
         }
-
-#ifdef _DEBUG_READ
-        snprintf(szMsg, sizeof(szMsg), 
-                "[id:%d]    \t\t\t\t\t\t\t\t\t\t\t\t[%s-%d] WaitFor nMyIndex[%" PRId64 "] nReturnedIndex[%" PRId64 "]", 
-                nCustomerId, __func__, __LINE__, nMyIndex, nReturnedIndex );
-        {AtomicPrint atomicPrint(szMsg);}
+#ifdef DEBUG_READ
+        snprintf(msg_buffer, sizeof(msg_buffer), 
+                "[id:%d]    \t\t\t\t\t\t\t\t\t\t\t\t[%s-%d] WaitFor "
+                "my_index[%" PRId64 "] returned_index[%" PRId64 "]", 
+                customer_id, __func__, __LINE__, my_index, returned_index );
+        {AtomicPrint atomicPrint(msg_buffer);}
 #endif
 
-        for(int64_t j = nMyIndex; j <= nReturnedIndex; j++)
-        {
+        for(int64_t j = my_index; j <= returned_index; j++) {
             //batch job 
-            OneBufferData* pData =  gSharedMemRingBuffer.GetData(j);
-
-            nSum += pData->nData ;
-
-#ifdef _DEBUG_READ
-            snprintf(szMsg, sizeof(szMsg), 
-                    "[id:%d]   \t\t\t\t\t\t\t\t\t\t\t\t[%s-%d]  nMyIndex[%" PRId64 ", translated:%" PRId64 "] data [%" PRId64 "] ^^", 
-                    nCustomerId, __func__, __LINE__, j, 
-                    gSharedMemRingBuffer.GetTranslatedIndex(j), pData->nData );
-            {AtomicPrint atomicPrint(szMsg);}
+            OneBufferData* pData =  g_shared_mem_ring_buffer.GetData(j);
+            sum += pData->data ;
+#ifdef DEBUG_READ
+            snprintf(msg_buffer, sizeof(msg_buffer), 
+                "[id:%d]   \t\t\t\t\t\t\t\t\t\t\t\t[%s-%d]  "
+                "my_index[%" PRId64 ", translated:%" PRId64 "] data [%" PRId64 "] ^^", 
+                customer_id, __func__, __LINE__, j, 
+                g_shared_mem_ring_buffer.GetTranslatedIndex(j), pData->data );
+            {AtomicPrint atomicPrint(msg_buffer);}
 #endif
-
-            gSharedMemRingBuffer.CommitRead(nCustomerId, j );
-            nTotalFetched++;
-
+            g_shared_mem_ring_buffer.CommitRead(customer_id, j );
+            total_fetched++;
         } //for
-
-        nMyIndex = nReturnedIndex + 1; 
+        my_index = returned_index + 1; 
     } //for
 
-    long long nElapsedMicro= gElapsed.SetEndTime(MICRO_SEC_RESOLUTION);
-    snprintf(szMsg, sizeof(szMsg), "**** consumer test %d count %d -> elapsed :%lld (micro sec) TPS %lld", 
-        gTestIndex , SUM_TILL_THIS , nElapsedMicro, 
+    long long nElapsedMicro= g_elapsed.SetEndTime(MICRO_SEC_RESOLUTION);
+    snprintf(msg_buffer, sizeof(msg_buffer), "**** consumer test %lu count %lu -> "
+            "elapsed :%lld (micro sec) TPS %lld", 
+        g_test_index , SUM_TILL_THIS , nElapsedMicro, 
         (long long) (10000L*1000000L)/nElapsedMicro );
-    {AtomicPrint atomicPrint(szMsg);}
+    DEBUG_LOG(msg_buffer);
 
-    if(nSum != SUM_ALL)
-    {
-        snprintf(szMsg, sizeof(szMsg), 
-            "\t\t\t\t\t\t\t\t\t\t\t\t********* SUM ERROR : ThreadWorkRead [id:%d] Exiting, Sum =%" PRId64 " / gTestIndex[%d]", 
-            nCustomerId, nSum, gTestIndex);
-        {AtomicPrint atomicPrint(szMsg);}
-
+    if(sum != SUM_ALL) {
+        snprintf(msg_buffer, sizeof(msg_buffer), 
+            "\t\t\t\t\t\t\t\t\t\t\t\t********* SUM ERROR : ThreadWorkRead "
+            "[id:%d] Exiting, Sum =%" PRId64 " / g_test_index[%lu]", 
+            customer_id, sum, g_test_index);
+        {AtomicPrint atomicPrint(msg_buffer);}
         exit(0);
-    }
-    else
-    {
-#ifdef _DEBUG_RSLT_
-        snprintf(szMsg, sizeof(szMsg), 
-            "\t\t\t\t\t\t\t\t\t\t\t\t********* SUM OK : ThreadWorkRead [id:%d] Sum =%" PRId64 " / gTestIndex[%d]", 
-            nCustomerId, nSum,gTestIndex );
-        {AtomicPrint atomicPrint(szMsg);}
-#endif
+    } else {
+        snprintf(msg_buffer, sizeof(msg_buffer), 
+                "\t\t\t\t\t\t\t\t\t\t\t\t********* SUM OK : ThreadWorkRead "
+                "[id:%d] Sum =%" PRId64 " / g_test_index[%lu]", 
+                customer_id, sum,g_test_index );
+        {AtomicPrint atomicPrint(msg_buffer);}
     }
 }
 
-
+///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 int main(int argc, char* argv[])
 {
-    if(argc != 2)
-    {
+    if(argc != 2) {
         std::cout << "usage: "<< argv[0]<<" customer_index"  << '\n';
         std::cout << "ex: "<< argv[0]<<" 0"  << '\n';
         std::cout << "ex: "<< argv[0]<<" 1"  << '\n';
         return 1;
     }
-
-    int nCustomerId = atoi(argv[1]);
-    int MAX_TEST = 1;
+    int customer_id = atoi(argv[1]);
+    size_t MAX_TEST = 1;
     SUM_TILL_THIS = 10000;
-    int MAX_RBUFFER_CAPACITY = 4096; 
+    size_t MAX_RBUFFER_CAPACITY = 4096; 
     SUM_ALL =  ( ( SUM_TILL_THIS * ( SUM_TILL_THIS + 1 ) ) /2 ) ; 
-
     std::cout << "********* SUM_ALL : " << SUM_ALL << '\n';
 
-    if(! gSharedMemRingBuffer.InitRingBuffer(MAX_RBUFFER_CAPACITY) )
-    { 
+    if(! g_shared_mem_ring_buffer.InitRingBuffer(MAX_RBUFFER_CAPACITY) ) { 
         //Error!
         return 1; 
     }
-
-
-    for ( gTestIndex=0; gTestIndex < MAX_TEST; gTestIndex++)
-    {
-        TestFunc(nCustomerId);
+    for ( g_test_index=0; g_test_index < MAX_TEST; g_test_index++) {
+        TestFunc(customer_id);
     }
-
-
     return 0;
 }
 

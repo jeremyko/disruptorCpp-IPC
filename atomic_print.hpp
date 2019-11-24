@@ -23,24 +23,20 @@
 #include <iostream>
 #include <mutex>
 
-using namespace std;
 ///////////////////////////////////////////////////////////////////////////////
 class AtomicPrint
 {
     public:
-        AtomicPrint()
-        {
+        AtomicPrint() {
             lock_mutex_.lock();
         }
 
-        AtomicPrint(string strMsg)
-        {
+        AtomicPrint(std::string msg) {
             lock_mutex_.lock();
-            cout << strMsg <<"\n";
+            std::cout << msg <<"\n";
         }
 
-        ~AtomicPrint()
-        {
+        ~AtomicPrint() {
             lock_mutex_.unlock();
         }
 

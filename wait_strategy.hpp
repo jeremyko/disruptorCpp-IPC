@@ -20,37 +20,30 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-#ifndef __WAIT_STRATEGY_INTERFACE_HPP__
-#define __WAIT_STRATEGY_INTERFACE_HPP__
+#ifndef WAIT_STRATEGY_INTERFACE_HPP
+#define WAIT_STRATEGY_INTERFACE_HPP
 //20150721 kojh create
 
 #include <thread>
-
+#include <sys/time.h>
 #include "common_def.hpp"
 #include "ring_buffer_on_shmem.hpp"
 
-using namespace std;
-
-typedef enum __ENUM_WAIT_STRATEGY__
+typedef enum _ENUM_WAIT_STRATEGY_
 {
     BLOCKING_WAIT,
     YIELDING_WAIT,
     SLEEPING_WAIT
-
 } ENUM_WAIT_STRATEGY;
 
 ///////////////////////////////////////////////////////////////////////////////
 class WaitStrategyInterface
 {
     public:
-        WaitStrategyInterface( )
-        {
-        };
-        virtual ~WaitStrategyInterface() { };
-
+        WaitStrategyInterface() {};
+        virtual ~WaitStrategyInterface() {};
         virtual int64_t Wait( int64_t nIndex ) =0;
         virtual void SignalAllWhenBlocking() = 0; //blocking strategy only
-
     protected:
         RingBufferStatusOnSharedMem* pRingBufferStatusOnSharedMem_;
 };
@@ -59,43 +52,30 @@ class WaitStrategyInterface
 class YieldingWaitStrategy:public WaitStrategyInterface
 {
     public:
-        
-        YieldingWaitStrategy( RingBufferStatusOnSharedMem* pRingBufferStatusOnSharedMem) 
+        YieldingWaitStrategy(RingBufferStatusOnSharedMem* pRingBufferStatusOnSharedMem) 
         {
             pRingBufferStatusOnSharedMem_= pRingBufferStatusOnSharedMem ;
         };
         ~YieldingWaitStrategy() { };
 
-        int64_t Wait(int64_t nIndex) 
-        {
+        int64_t Wait(int64_t nIndex) {
             int nCounter = 100;
-
-            while (true)
-            {
+            while (true) {
                 int64_t nCurrentCursor = pRingBufferStatusOnSharedMem_->cursor.load() ;
-
-                if( nIndex > nCurrentCursor )
-                {
+                if( nIndex > nCurrentCursor ) {
                     //spins --> yield
-                    if(nCounter ==0)
-                    {
+                    if(nCounter ==0) {
                         std::this_thread::yield();
-                    }
-                    else
-                    {
+                    } else {
                         nCounter--;
                     }
                     continue;
-                }
-                else
-                {
+                } else {
                     return nCurrentCursor;
                 }
-            }
+            }//while
         }
-
-        void SignalAllWhenBlocking()  //blocking strategy only
-        {
+        void SignalAllWhenBlocking() {  //blocking strategy only
         }
 };
 
@@ -103,54 +83,38 @@ class YieldingWaitStrategy:public WaitStrategyInterface
 class SleepingWaitStrategy:public WaitStrategyInterface
 {
     public:
-        
         SleepingWaitStrategy( RingBufferStatusOnSharedMem* pRingBufferStatusOnSharedMem) 
         {
             pRingBufferStatusOnSharedMem_= pRingBufferStatusOnSharedMem ;
         };
         ~SleepingWaitStrategy() { };
 
-        int64_t Wait(int64_t nIndex) 
-        {
+        int64_t Wait(int64_t nIndex) {
             int nCounter = 200;
 
-            while (true)
-            {
+            while (true) {
                 int64_t nCurrentCursor = pRingBufferStatusOnSharedMem_->cursor.load() ;
-
-                if( nIndex > nCurrentCursor )
-                {
+                if( nIndex > nCurrentCursor ) {
                     //spins --> yield --> sleep
-                    if(nCounter > 100)
-                    {
+                    if(nCounter > 100) {
                         nCounter--;
-                    }
-                    else if(nCounter > 0)
-                    {
+                    } else if(nCounter > 0) {
                         std::this_thread::yield();
                         nCounter--;
-                    }
-                    else
-                    {
+                    } else {
                         std::this_thread::sleep_for(std::chrono::nanoseconds(1)); 
                     }
                     continue;
-                }
-                else
-                {
+                } else {
                     return nCurrentCursor;
                 }
-            }
+            }//while
         }
-
-        void SignalAllWhenBlocking()  //blocking strategy only
-        {
+        void SignalAllWhenBlocking() { //blocking strategy only
         }
 };
 
-
 ///////////////////////////////////////////////////////////////////////////////
-#include <sys/time.h>
 class BlockingWaitStrategy:public WaitStrategyInterface
 {
     public:
@@ -158,52 +122,37 @@ class BlockingWaitStrategy:public WaitStrategyInterface
         {
             pRingBufferStatusOnSharedMem_= pRingBufferStatusOnSharedMem ;
         };
-
         ~BlockingWaitStrategy() { };
 
-        int64_t Wait(int64_t nIndex) 
-        {
-            while (true)
-            {
+        int64_t Wait(int64_t nIndex) {
+            while (true) {
                 int64_t nCurrentCursor = pRingBufferStatusOnSharedMem_->cursor.load() ;
-
-                if( nIndex > nCurrentCursor )
-                {
+                if( nIndex > nCurrentCursor ) {
                     struct timespec timeToWait;
                     struct timeval now;
                     gettimeofday(&now,NULL);
-                  
                     timeToWait.tv_sec  = now.tv_sec;
                     timeToWait.tv_nsec = now.tv_usec * 1000;
                     timeToWait.tv_sec += 1;
                     //timeToWait.tv_nsec += 100;
+                    pthread_mutex_lock(&(pRingBufferStatusOnSharedMem_->mtx_lock) );
 
-                    pthread_mutex_lock(&(pRingBufferStatusOnSharedMem_->mtxLock) );
-
-                    pthread_cond_timedwait(& (pRingBufferStatusOnSharedMem_->condVar), 
-                                           &(pRingBufferStatusOnSharedMem_->mtxLock),
+                    pthread_cond_timedwait(& (pRingBufferStatusOnSharedMem_->cond_var), 
+                                           &(pRingBufferStatusOnSharedMem_->mtx_lock),
                                            & timeToWait );
-
-                    pthread_mutex_unlock(&(pRingBufferStatusOnSharedMem_->mtxLock));
-                }
-                else
-                {
+                    pthread_mutex_unlock(&(pRingBufferStatusOnSharedMem_->mtx_lock));
+                } else {
                     return nCurrentCursor;
                 }
-            }
+            }//while
         }
-
-        void SignalAllWhenBlocking()  //blocking strategy only
-        {
+        void SignalAllWhenBlocking() {  //blocking strategy only
             //생산자가 Commit 시 호출됨.
-            pthread_mutex_lock(&(pRingBufferStatusOnSharedMem_->mtxLock));
-            pthread_cond_broadcast(&(pRingBufferStatusOnSharedMem_->condVar));
-            pthread_mutex_unlock(&(pRingBufferStatusOnSharedMem_->mtxLock));
+            pthread_mutex_lock(&(pRingBufferStatusOnSharedMem_->mtx_lock));
+            pthread_cond_broadcast(&(pRingBufferStatusOnSharedMem_->cond_var));
+            pthread_mutex_unlock(&(pRingBufferStatusOnSharedMem_->mtx_lock));
         }
-
-    private:
 };
 
-
-#endif
+#endif //WAIT_STRATEGY_INTERFACE_HPP
 

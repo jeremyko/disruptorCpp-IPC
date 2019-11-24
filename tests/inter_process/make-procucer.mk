@@ -1,7 +1,7 @@
 CXX = g++
 CXXFLAGS += -Wall -std=c++11 -g -O2
 
-#CXXFLAGS+= -D_DEBUG_WRITE_
+#CXXFLAGS+= -DDEBUG_WRITE
 
 LIBS += -lpthread 
 

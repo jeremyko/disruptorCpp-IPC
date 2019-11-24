@@ -20,12 +20,8 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-#ifndef __DISRUPTORCPP_RING_BUFFER_ON_SHM_HPP__
-#define __DISRUPTORCPP_RING_BUFFER_ON_SHM_HPP__
-///////////////////////////////////////////////////////////////////////////////
-//20150721 kojh create
-///////////////////////////////////////////////////////////////////////////////
-
+#ifndef DISRUPTORCPP_RING_BUFFER_ON_SHM_HPP
+#define DISRUPTORCPP_RING_BUFFER_ON_SHM_HPP
 
 #include <iostream>
 #include <atomic>
@@ -37,49 +33,48 @@
 #include "shared_mem_manager.hpp" 
 #include "wait_strategy.hpp"
 
-using namespace std;
-
 ///////////////////////////////////////////////////////////////////////////////
 class SharedMemRingBuffer
 {
     public:
-        SharedMemRingBuffer(ENUM_WAIT_STRATEGY waitStrategyType);
+        SharedMemRingBuffer(ENUM_WAIT_STRATEGY wait_strategy);
         ~SharedMemRingBuffer();
 
-        bool     InitRingBuffer(int nSize=DEFAULT_RING_BUFFER_SIZE);
+        bool     InitRingBuffer(int size=DEFAULT_RING_BUFFER_SIZE);
         void     ResetRingBufferState();
         bool     TerminateRingBuffer();
-        bool     SetData( int64_t nIndex, OneBufferData* pData);
-        OneBufferData*  GetData(int64_t nIndex);
+        bool     SetData( int64_t index, OneBufferData* data);
+        OneBufferData*  GetData(int64_t index);
 
-        bool     RegisterConsumer (int nId, int64_t* nIndexforCustomerUse);
+        bool     RegisterConsumer (int id, int64_t* index_for_customer);
         int64_t  GetTranslatedIndex( int64_t sequence);
         void     SignalAll(); 
  
         //producer
-        int64_t  ClaimIndex(int nCallerId);
-        bool     Commit(int nUserId, int64_t index);
+        int64_t  ClaimIndex(int caller_id);
+        bool     Commit(int user_id, int64_t index);
         
         //consumer
-        int64_t  WaitFor(int nUserId, int64_t index);
-        bool     CommitRead(int nUserId, int64_t index);
+        int64_t  WaitFor(int user_id, int64_t index);
+        bool     CommitRead(int user_id, int64_t index);
 
     private:
-
-        SharedMemoryManager sharedMemoryManager_;
-        RingBufferStatusOnSharedMem* pRingBufferStatusOnSharedMem_; 
-        int  nBufferSize_;
-        int  nTotalMemSize_ ;
         int64_t GetMinIndexOfConsumers();
         int64_t GetNextSequenceForClaim();
-        ENUM_WAIT_STRATEGY waitStrategyType_;
-        WaitStrategyInterface* pWaitStrategy_ ;
-        RingBuffer< OneBufferData* > ringBuffer_ ; 
-    
         //no copy allowed
         SharedMemRingBuffer(SharedMemRingBuffer&) = delete;   
         void operator=(SharedMemRingBuffer) = delete;
+
+    private:
+        size_t  buffer_size_    ;
+        size_t  total_mem_size_ ;
+        RingBuffer<OneBufferData*>      ring_buffer_ ; 
+        WaitStrategyInterface*          wait_strategy_ ;
+        SharedMemoryManager             shared_mem_mgr_;
+        ENUM_WAIT_STRATEGY              wait_strategy_type_;
+        RingBufferStatusOnSharedMem*    ring_buffer_status_on_shared_mem_; 
+    
 };
 
-#endif
+#endif //DISRUPTORCPP_RING_BUFFER_HPP
 

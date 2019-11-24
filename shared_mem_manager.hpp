@@ -20,8 +20,8 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-#ifndef __DISRUPTORCPP_SHMANAGER_HPP__
-#define __DISRUPTORCPP_SHMANAGER_HPP__
+#ifndef DISRUPTORCPP_SHMANAGER_HPP
+#define DISRUPTORCPP_SHMANAGER_HPP
 //20150721 kojh create
 
 #include <sys/ipc.h> 
@@ -30,28 +30,29 @@
 #include <unistd.h> 
 #include <errno.h> 
 #include <stdio.h> 
+#include <string> 
 
+////////////////////////////////////////////////////////////////////////////////
 class SharedMemoryManager
 {
     public:
         SharedMemoryManager();
 
-        bool CreateShMem(key_t nKey, size_t nSize,bool* pbFirstCreated);
-        bool GetShMem(key_t nKey, size_t nSize);
         bool AttachShMem();
         bool DetachShMem();
         bool RemoveShMem();
-        void* GetShMemStartAddr()
-        {
-            return pShMemStartAddr_ ;
-        }
+        bool GetShMem(key_t key, size_t size);
+        bool CreateShMem(key_t key, size_t size,bool* first_created);
+        void* GetShMemStartAddr() { return sh_mem_start_addr_ ; }
+        const char* GetLastErrMsg() { return err_msg_.c_str(); }
 
     private:
-        key_t   nShMemKey_ ;
-        int     nShMemId_ ;
-        int     nShMemSize_ ;
-        void*   pShMemStartAddr_ ;
-        int     nTotalAttached_ ;
+        key_t   sh_mem_key_  ;
+        int     sh_mem_id_   ;
+        int     sh_mem_size_ ;
+        void*   sh_mem_start_addr_ ;
+        int     total_attached_ ;
+        std::string err_msg_ ;  
 };
 
 #endif

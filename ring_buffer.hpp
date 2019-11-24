@@ -20,73 +20,59 @@
  THE SOFTWARE.
  ****************************************************************************/
 
-#ifndef __DISRUPTORCPP_RING_BUFFER_HPP__
-#define __DISRUPTORCPP_RING_BUFFER_HPP__
-//20150721 kojh create
+#ifndef DISRUPTORCPP_RING_BUFFER_HPP
+#define DISRUPTORCPP_RING_BUFFER_HPP
 
 #include <iostream>
 #include <memory>
 #include <vector>
+#include "common_def.hpp" 
         
-#define DEFAULT_RING_BUFFER_SIZE  1024
-
+////////////////////////////////////////////////////////////////////////////////
 template<typename T>
 class RingBuffer
 {
     public:
-
-        RingBuffer()
-        {
-            nCapacity_ = DEFAULT_RING_BUFFER_SIZE;
+        RingBuffer() {
+            capacity_ = DEFAULT_RING_BUFFER_SIZE;
             buffer_.reserve(DEFAULT_RING_BUFFER_SIZE);
         }
-
         RingBuffer(const std::vector<T>& buffer) : buffer_(buffer) {}
         
-        T& operator[](const int64_t & sequence) 
-        { 
-            return buffer_[sequence & (nCapacity_ - 1)]; //only when multiple of 2
+        T& operator[](const int64_t & sequence) { 
+            return buffer_[sequence & (capacity_ - 1)]; //only when multiple of 2
         }
         
-        int64_t GetTranslatedIndex( int64_t sequence)
-        {
-            int64_t translated_index = (sequence & (nCapacity_ - 1)) ; 
+        int64_t GetTranslatedIndex( int64_t sequence) {
+            int64_t translated_index = (sequence & (capacity_ - 1)) ; 
             return translated_index ;
         }
 
-        bool SetCapacity(int nCapacity)
-        {
-            bool bIsPower2 =  nCapacity && !( (nCapacity-1) & nCapacity ) ; 
-
-            if( bIsPower2 ==0 )
-            {
-                std::cerr << "Buffer capacity error: power of 2 required!" << '\n';
+        bool SetCapacity(size_t capacity) {
+            bool is_power2 =  capacity && !( (capacity-1) & capacity ) ; 
+            if( is_power2 ==0 ) {
+                DEBUG_ELOG("Buffer capacity error: power of 2 required!");
                 return false;
             }
 
-            try 
-            {
-                buffer_.reserve(nCapacity);
-            }
-            catch (const std::length_error& le) 
-            {
-                std::cerr << "Length error: " << le.what() << '\n';
+            try {
+                buffer_.reserve(capacity);
+            } catch (const std::length_error& le) {
+                DEBUG_ELOG("Length error: " << le.what() );
                 return false;
             }
-
-            nCapacity_ = nCapacity;
+            capacity_ = capacity;
             return true;
         }
 
     private:
-        int nCapacity_ ;
+        size_t          capacity_ ;
         std::vector<T>  buffer_;
-
         RingBuffer(const RingBuffer&);
         void operator=(const RingBuffer&);
         RingBuffer(RingBuffer&&);
         void operator=(const RingBuffer&&);
 };
 
-#endif
+#endif //DISRUPTORCPP_RING_BUFFER_HPP
 
