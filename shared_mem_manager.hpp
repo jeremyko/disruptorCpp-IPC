@@ -49,7 +49,7 @@ class SharedMemoryManager
     private:
         key_t   sh_mem_key_  ;
         int     sh_mem_id_   ;
-        int     sh_mem_size_ ;
+        size_t  sh_mem_size_ ;
         void*   sh_mem_start_addr_ ;
         int     total_attached_ ;
         std::string err_msg_ ;  

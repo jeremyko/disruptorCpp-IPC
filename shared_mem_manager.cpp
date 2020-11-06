@@ -26,7 +26,7 @@
 
 ///////////////////////////////////////////////////////////////////////////////
 SharedMemoryManager::SharedMemoryManager(): 
-    sh_mem_id_(-1), sh_mem_size_(-1), sh_mem_start_addr_(NULL) , total_attached_(0)
+    sh_mem_id_(-1), sh_mem_size_(0), sh_mem_start_addr_(NULL) , total_attached_(0)
 {
 
 }
@@ -61,12 +61,6 @@ bool SharedMemoryManager::GetShMem(key_t key, size_t size)
 {            
     sh_mem_key_  = key ;
     sh_mem_size_ = size;
-    int nRtn = shmget((key_t)key, size,  0666 );
-    if( nRtn < 0  ) {
-        err_msg_ = "shmget error: " + std::string(strerror(errno)) ;
-        DEBUG_ELOG(err_msg_);
-        return false;
-    }
     sh_mem_id_ = shmget((key_t)key, size, 0666 );
     if (sh_mem_id_ < 0) {
         err_msg_ = "shmget error: " + std::string(strerror(errno)) ;
