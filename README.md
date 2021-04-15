@@ -20,3 +20,7 @@
     ./consumer 1
     ./producer
     //make sure reset shared memory running 'ipcrm -M your_shmkey' if you have changed buffer size or number of producers/consumers.
+
+### arbitrary length of data
+There is one downside here. this is a method of pre-allocating data of a fixed length, putting it in the ring buffer, and using it. There is a slightly modified version in case the length of the saved data is variable. Please note the following.
+[https://github.com/jeremyko/disruptorCpp-IPC-Arbitrary-Length-Data](https://github.com/jeremyko/disruptorCpp-IPC-Arbitrary-Length-Data)
