@@ -74,7 +74,7 @@ typedef struct _RingBufferStatusOnSharedMem_
     std::atomic<size_t> registered_consumer_count;
     std::atomic<int64_t> cursor  alignas(CACHE_LINE_SIZE);  
     std::atomic<int64_t> next    alignas(CACHE_LINE_SIZE); 
-    int64_t array_of_consumer_indexes [MAX_CONSUMER] __attribute__ ((aligned (CACHE_LINE_SIZE)));
+    std::atomic<int64_t> array_of_consumer_indexes [MAX_CONSUMER] __attribute__ ((aligned (CACHE_LINE_SIZE)));
     //TODO use uint64_t
     pthread_cond_t   cond_var;
     pthread_mutex_t  mtx_lock;
