@@ -1,6 +1,6 @@
 # disruptorCpp-IPC
 
-## basic disruptor c++ implementation for IPC
+## basic disruptor c++ implementation for IPC (Linux, Mac OS)
 [https://jeremyko.github.io/2015/09/06/disruptor.html](https://jeremyko.github.io/2015/09/06/disruptor.html)
 
 ### inter thread test 
